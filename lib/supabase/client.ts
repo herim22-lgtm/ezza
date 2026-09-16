@@ -1,8 +1,11 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+const supabaseUrl = 'https://saaeozlhkysaugobkaat.supabase.co'
+const supabasePublishableKey = 'sb_publishable_rrK0rqXJrnejxWTs7Eas6A_qFXEO3Tk'
+
 export function createClient() {
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    supabaseUrl,
+    supabasePublishableKey
   )
 }
