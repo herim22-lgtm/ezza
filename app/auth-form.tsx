@@ -13,6 +13,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const isSignup = mode === 'signup';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -20,6 +21,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     setLoading(true);
     setMessage('');
     setIsError(false);
+    setNeedsConfirmation(false);
 
     try {
       const supabase = createClient();
@@ -46,8 +48,31 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         router.refresh();
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
       setIsError(true);
-      setMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      setNeedsConfirmation(errorMessage.toLowerCase().includes('email not confirmed'));
+      setMessage(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    setLoading(true);
+    setMessage('');
+    setIsError(false);
+    try {
+      const { error } = await createClient().auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/login?confirmed=1` },
+      });
+      if (error) throw error;
+      setNeedsConfirmation(false);
+      setMessage('A new confirmation email was sent. Open the newest email and click the link.');
+    } catch (error) {
+      setIsError(true);
+      setMessage(error instanceof Error ? error.message : 'Could not resend the email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +90,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
           <label>Email address<input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" /></label>
           <label>Password<input required minLength={6} type="password" autoComplete={isSignup ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" /></label>
           {message && <div className={isError ? 'authMessage error' : 'authMessage success'}>{message}</div>}
+          {needsConfirmation && <button className="authResend" type="button" disabled={loading || !email} onClick={resendConfirmation}>Resend confirmation email</button>}
           <button className="authSubmit" disabled={loading}>{loading ? 'Please wait…' : isSignup ? 'Create account' : 'Log in'}</button>
         </form>
         <p className="authSwitch">{isSignup ? 'Already have an account?' : 'New to Ezza?'} <Link href={isSignup ? '/login' : '/signup'}>{isSignup ? 'Log in' : 'Create account'}</Link></p>
